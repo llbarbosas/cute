@@ -29,7 +29,7 @@ Just playing with Deno. Use it by your responsability.
 
 ## :runner: Usage
 ```typescript
-import cute from 'https://deno.land/x/cute/mod.ts'
+import cute from 'gh:llbarbosas:cute/mod.ts'
 
 const lexer = cute.compile({
     animal: ["fox", "dog"],
