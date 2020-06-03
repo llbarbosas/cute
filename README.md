@@ -3,7 +3,7 @@
 </h1>
 
 <h3 align="center">
-  Tokenizer/lexer generator for Deno inspirated by <a href="https://github.com/no-context/moo">moo</a>
+Tokenizer/lexer generator for Deno inspirated by <a href="https://github.com/no-context/moo">moo</a>
 </h3>
 
 <p align="center">
@@ -25,10 +25,12 @@
 </p>
 
 ## :rocket: About
-
+Just playing with Deno. Use it by your responsability.
 
 ## :runner: Usage
 ```typescript
+import cute from 'https://deno.land/x/cute/mod.ts'
+
 const lexer = cute.compile({
     animal: ["fox", "dog"],
     det: "the",
@@ -54,6 +56,9 @@ for(const token of lexer){
 
 lexer.toArray().map(token => token.type);
 ```
+
+### :white_check_mark: Testing
+You can test it by running `deno test`
 
 ## :memo: Licence
 
