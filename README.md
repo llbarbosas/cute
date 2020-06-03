@@ -3,7 +3,7 @@
 </h1>
 
 <h3 align="center">
-Tokenizer/lexer generator for Deno inspirated by [moo](https://github.com/no-context/moo)
+  Tokenizer/lexer generator for Deno inspirated by <a href="https://github.com/no-context/moo">moo</a>
 </h3>
 
 <p align="center">
