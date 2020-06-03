@@ -23,6 +23,7 @@ type LexerRuleObj = {
   value?: (s: string) => string;
   lineBreaks?: boolean;
   ignore?: boolean;
+  error?: boolean;
 };
 
 type CompiledLexerRuleObj = LexerRuleObj & {
@@ -130,13 +131,7 @@ export default class Lexer {
   }
 
   public next(): IteratorResult<Token> {
-    if (this.buffer === "") {
-      throw new Error(
-        `Empty buffer. You must call lexer.reset('string to tokenize') before iterate`,
-      );
-    }
-
-    if (this.done) {
+    if (this.done || this.buffer === "") {
       return { value: null, done: true };
     }
 
@@ -189,7 +184,7 @@ export default class Lexer {
       offset: stringByteSize(this.buffer.slice(0, lastIndex)),
       lineBreaks,
       line: this.line,
-      col: this.col,
+      col: this.col - match.length,
     };
 
     return {

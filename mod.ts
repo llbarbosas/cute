@@ -1,5 +1,6 @@
-import Lexer, { LexerRules } from "./lexer.ts";
+import Lexer, { LexerRules } from "./src/lexer.ts";
 
-const compile = (rules: LexerRules): Lexer => new Lexer(rules);
-
-export default { compile };
+export default {
+  compile: (rules: LexerRules): Lexer => new Lexer(rules),
+  error: Object.freeze({ match: /.*?/, error: true }),
+};

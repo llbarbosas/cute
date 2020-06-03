@@ -11,6 +11,7 @@ Deno.test("cut.error", () => {
     verb: /jumps/,
     space: { match: / +/, ignore: true },
     newline: { match: "\n", lineBreaks: true, ignore: true },
+    myError: cute.error,
   });
 
   lexer.reset("the quick brown fox\njumps over the lazy dog");

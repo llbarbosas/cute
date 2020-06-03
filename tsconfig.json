@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "esModuleInterop": true,
+        "lib": [
+            "esnext"
+        ],
+        "module": "esnext",
+        "moduleResolution": "node",
+        "noEmit": true,
+        "pretty": true,
+        "resolveJsonModule": true,
+        "target": "esnext"
+    },
+    "include": [
+        "./**/*.ts"
+    ]
+}
