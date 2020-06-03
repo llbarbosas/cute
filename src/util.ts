@@ -10,7 +10,25 @@ export const isObject = (s: any): s is Object =>
 export const escapeRegExp = (string: string) =>
   string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+export const regExpFromString = (string: string) =>
+  new RegExp(escapeRegExp(string));
+
+export const getValues = (obj: Object, prop: string): any[] =>
+  Object.values(obj).map((value) => value[prop]);
+
 export const countLineBreaks = (string: string) =>
   string.split("\n").length - 1;
 
 export const stringByteSize = (string: string) => new Blob([string]).size;
+
+export const combineRegexp = (exps: any[], sticky = false): RegExp => {
+  const combinedString = exps.reduce(
+    (acc: string, p: any) => `${acc && acc + "|"}${isRegExp(p) ? p.source : p}`,
+    "",
+  );
+
+  return new RegExp(combinedString, sticky ? "y" : "");
+};
+
+export const removeFlags = (regExp: RegExp): RegExp =>
+  new RegExp(regExp.source);
