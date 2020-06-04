@@ -21,13 +21,19 @@ export const countLineBreaks = (string: string) =>
 
 export const stringByteSize = (string: string) => new Blob([string]).size;
 
-export const combineRegexp = (exps: any[], sticky = false): RegExp => {
+export const combineRegexp = (
+  exps: any[],
+  options?: { sticky?: boolean; groupAll?: boolean },
+): RegExp => {
   const combinedString = exps.reduce(
-    (acc: string, p: any) => `${acc && acc + "|"}${isRegExp(p) ? p.source : p}`,
+    (acc: string, p: any) =>
+      `${acc && acc + "|"}${options?.groupAll ? "(" : ""}${
+        isRegExp(p) ? p.source : p
+      }${options?.groupAll ? ")" : ""}`,
     "",
   );
 
-  return new RegExp(combinedString, sticky ? "y" : "");
+  return new RegExp(combinedString, options?.sticky ? "y" : "");
 };
 
 export const removeFlags = (regExp: RegExp): RegExp =>

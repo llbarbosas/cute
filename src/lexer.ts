@@ -56,10 +56,23 @@ export default class Lexer {
 
   private rules: CompiledLexerRulesObject;
   private regexp: RegExp;
+  private regexpGroupNames: string[];
 
   constructor(rules: LexerRulesObject) {
     this.rules = this.compileRules(rules);
-    this.regexp = combineRegexp(getValues(this.rules, "match"), true);
+
+    this.regexpGroupNames = Object.keys(rules);
+
+    this.regexp = combineRegexp(
+      getValues(this.rules, "match"),
+      { sticky: true, groupAll: true },
+    );
+  }
+
+  private getGroup(match: RegExpExecArray) {
+    const index = match.slice(1).findIndex((group) => !!group);
+
+    return this.regexpGroupNames[index];
   }
 
   private compileRule(
@@ -159,13 +172,8 @@ export default class Lexer {
 
       if (!result) return;
 
+      const valueRuleName = this.getGroup(result);
       const value = result[0];
-
-      const valueRuleName = Object.keys(this.rules).find((key) =>
-        this.rules[key].match.test(value)
-      );
-
-      if (!valueRuleName) throw new Error();
 
       const valueTransform = this.rules[valueRuleName].value;
       const lineBreaks = countLineBreaks(value);
