@@ -21,7 +21,7 @@ type Token = {
   col: number;
 };
 
-type LexerRuleObj = { // LexerRule
+type LexerRule = {
   match: string | RegExp;
   value?: (s: string) => string;
   lineBreaks?: boolean;
@@ -29,7 +29,7 @@ type LexerRuleObj = { // LexerRule
   error?: boolean;
 };
 
-type CompiledLexerRule = LexerRuleObj & { // CompiledLexerRule
+type CompiledLexerRule = LexerRule & {
   match: RegExp;
 };
 
@@ -38,13 +38,13 @@ type LexerSave = {
   col: number;
 };
 
-type Pattern = RegExp | string[] | string | LexerRuleObj; // Pattern
+type Pattern = RegExp | string[] | string | LexerRule;
 
-export type LexerRulesObject = { // LexerRulesObject
+export type LexerRulesObject = {
   [name: string]: Pattern;
 };
 
-type CompiledLexerRulesObject = { // CompiledLexerRulesObject
+type CompiledLexerRulesObject = {
   [name: string]: CompiledLexerRule;
 };
 
@@ -55,24 +55,36 @@ export default class Lexer {
   private col = 1;
 
   private rules: CompiledLexerRulesObject;
+  private errors: CompiledLexerRulesObject;
   private regexp: RegExp;
-  private regexpGroupNames: string[];
+  private rulesGroupNames: string[];
+  private errorsRegexp: RegExp;
+  private errorsGroupNames: string[];
 
   constructor(rules: LexerRulesObject) {
-    this.rules = this.compileRules(rules);
+    [this.rules, this.errors] = this.compileRules(rules);
 
-    this.regexpGroupNames = Object.keys(rules);
-
+    this.rulesGroupNames = Object.keys(this.rules);
     this.regexp = combineRegexp(
       getValues(this.rules, "match"),
       { sticky: true, groupAll: true },
     );
+
+    this.errorsGroupNames = Object.keys(this.errors);
+    this.errorsRegexp = combineRegexp(
+      getValues(this.errors, "match"),
+      { groupAll: true },
+    );
   }
 
-  private getGroup(match: RegExpExecArray) {
+  private getGroup(match: RegExpExecArray, options = { error: false }) {
     const index = match.slice(1).findIndex((group) => !!group);
 
-    return this.regexpGroupNames[index];
+    const groupNames = !options.error
+      ? this.rulesGroupNames
+      : this.errorsGroupNames;
+
+    return groupNames[index];
   }
 
   private compileRule(
@@ -108,15 +120,20 @@ export default class Lexer {
 
   private compileRules(
     rules: LexerRulesObject,
-  ): CompiledLexerRulesObject {
+  ): CompiledLexerRulesObject[] {
     return Object
       .entries(rules)
-      .reduce((obj: {}, [ruleName, pattern]) => {
-        return {
-          ...obj,
-          [ruleName]: this.compileRule(pattern),
+      .reduce((arr: any[], [ruleName, pattern]) => {
+        const compiledRule = this.compileRule(pattern);
+        const ruleOrErrorIndex = !compiledRule.error ? 0 : 1;
+
+        arr[ruleOrErrorIndex] = {
+          ...arr[ruleOrErrorIndex],
+          [ruleName]: compiledRule,
         };
-      }, {});
+
+        return arr;
+      }, [{}, {}]);
   }
 
   public [Symbol.iterator]() {
@@ -162,23 +179,37 @@ export default class Lexer {
       const { lastIndex: resultIndex } = this.regexp;
       const result = this.regexp.exec(this.buffer);
 
+      let valueRuleName, valueRule, value;
+
       if (!result && resultIndex < this.buffer.length) {
-        throw new Error(
-          `Unexpected token at line ${this.line} col ${this.col}: ${
-            this.getUnexpectedToken(resultIndex)
-          }`,
+        const unexpectedToken = this.getUnexpectedToken(resultIndex);
+        const errorResult = this.errorsRegexp.exec(
+          unexpectedToken,
         );
+
+        if (!errorResult) {
+          throw new Error(
+            `Unexpected token at line ${this.line} col ${this.col}: ${unexpectedToken}`,
+          );
+        }
+
+        valueRuleName = this.getGroup(errorResult, { error: true });
+        valueRule = this.errors[valueRuleName];
+        value = errorResult[0];
+
+        this.regexp.lastIndex = resultIndex + errorResult[0].length;
+      } else {
+        if (!result) return;
+
+        valueRuleName = this.getGroup(result);
+        valueRule = this.rules[valueRuleName];
+        value = result[0];
       }
 
-      if (!result) return;
-
-      const valueRuleName = this.getGroup(result);
-      const value = result[0];
-
-      const valueTransform = this.rules[valueRuleName].value;
+      const valueTransform = valueRule.value;
       const lineBreaks = countLineBreaks(value);
 
-      if (!this.rules[valueRuleName].ignore) {
+      if (!valueRule.ignore) {
         token = {
           type: valueRuleName,
           text: value,
@@ -190,7 +221,7 @@ export default class Lexer {
         };
       }
 
-      if (this.rules[valueRuleName].lineBreaks && lineBreaks > 0) {
+      if (valueRule.lineBreaks && lineBreaks > 0) {
         this.col = 1;
         this.line += lineBreaks;
       } else {
@@ -204,11 +235,12 @@ export default class Lexer {
   }
 
   private getUnexpectedToken(lastIndex: number): string {
+    const tokenEndIndex = this.buffer.slice(lastIndex)
+      .search(removeFlags(this.regexp));
+
     return this.buffer.slice(
       lastIndex,
-      lastIndex +
-        this.buffer.slice(lastIndex)
-          .search(removeFlags(this.regexp)),
+      lastIndex + tokenEndIndex,
     );
   }
 
