@@ -16,15 +16,15 @@ import {
   LexerRulesObject,
   CompiledLexerRule,
   Pattern,
+  LexerInterface,
 } from "./types/cute.d.ts";
 
-export default class Lexer {
+export default class Lexer implements LexerInterface {
   private rules: CompiledLexerRulesObject;
   private ruleNames: string[];
   private regexp: RegExp;
-  private tokenHistory: Token[] = [];
-  private buffer: string = "";
-
+  private history: { token: Token; rule: CompiledLexerRule }[] = [];
+  private buffer = "";
   private nextValues = {
     col: 1,
     line: 1,
@@ -73,6 +73,18 @@ export default class Lexer {
     return this;
   }
 
+  public getLastRule() {
+    return this.history[this.history.length - 1]?.rule;
+  }
+
+  public setBufferIndex(index: number) {
+    this.regexp.lastIndex = index;
+  }
+
+  public getBufferIndex() {
+    return this.regexp.lastIndex;
+  }
+
   public next(): IteratorResult<Token> {
     let isBufferCompletelyConsumed =
       this.regexp.lastIndex === this.buffer.length;
@@ -115,14 +127,14 @@ export default class Lexer {
         offset: lastOffset + stringByteSize(text),
       };
 
+      this.history.push({ token, rule: resultRule });
+
       if (!resultRule.ignore) {
         return {
           value: token,
           done: false,
         };
       }
-
-      this.tokenHistory.push(token);
 
       isBufferCompletelyConsumed = this.regexp.lastIndex === this.buffer.length;
     }
@@ -167,12 +179,10 @@ function compilePattern(pattern: Pattern): [string, CompiledLexerRule] {
   } else if (isArray(pattern)) {
     patternMatchString = combineArraySingleString(pattern);
   } else if (isObject(pattern)) {
-    const { value, lineBreaks, ignore } = pattern;
-    compiledRule = { value, lineBreaks, ignore };
+    const { match, ...ruleRest } = pattern;
+    compiledRule = ruleRest;
 
-    patternMatchString = isRegExp(pattern.match)
-      ? pattern.match.source
-      : escapeRegExp(pattern.match);
+    patternMatchString = isRegExp(match) ? match.source : escapeRegExp(match);
   } else {
     throw new Error(`Unexpected pattern type: ${pattern}`);
   }

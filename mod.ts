@@ -1,8 +1,8 @@
-import { LexerRulesObject } from "./src/types/cute.d.ts";
-// import Lexer, { LexerRulesObject } from "./src/lexer.ts";
+import { LexerRulesObject, StatesObject } from "./src/types/cute.d.ts";
 import Lexer from "./src/lexer.ts";
+import StatefulLexer from "./src/StatefulLexer.ts";
 
 export default {
-  compile: (rules: LexerRulesObject): Lexer => new Lexer(rules),
-  error: Object.freeze({ match: /.+/, error: true }),
+  compile: (rules: LexerRulesObject) => new Lexer(rules),
+  states: (states: StatesObject) => new StatefulLexer(states),
 };

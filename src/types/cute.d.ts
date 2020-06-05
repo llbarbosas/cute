@@ -1,9 +1,15 @@
+import Lexer from "../lexer.ts";
+import StatefulLexer from "../StatefulLexer.ts";
+
 export type LexerRule = {
   match: string | RegExp;
   value?: (s: string) => string;
   lineBreaks?: boolean;
   ignore?: boolean;
   error?: boolean;
+  push?: string;
+  next?: string;
+  pop?: number;
 };
 
 export type CompiledLexerRule = LexerRule & {
@@ -28,4 +34,18 @@ export type Token = {
   lineBreaks: number;
   line: number;
   col: number;
+};
+
+export interface LexerInterface {
+  next(): IteratorResult<Token>;
+  reset(buffer: string): Lexer | StatefulLexer;
+  [Symbol.iterator](): { next: () => IteratorResult<Token> };
+}
+
+export type StatesObject = {
+  [state: string]: LexerRulesObject;
+};
+
+export type LexersObject = {
+  [stateLexer: string]: Lexer;
 };

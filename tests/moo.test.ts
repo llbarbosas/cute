@@ -315,3 +315,45 @@ Deno.test(`moo's "Reset"`, () => {
     },
   );
 });
+
+// https://github.com/no-context/moo#states
+Deno.test(`moo's "States"`, () => {
+  const lexer = cute.states({
+    main: {
+      strstart: { match: "`", push: "lit" },
+      ident: /\w+/,
+      lbrace: { match: "{", push: "main" },
+      rbrace: { match: "}", pop: 1 },
+      colon: ":",
+      space: { match: /\s+/, lineBreaks: true },
+    },
+    lit: {
+      interp: { match: "${", push: "main" },
+      escape: /\\./,
+      strend: { match: "`", pop: 1 },
+      const: { match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true },
+    },
+  });
+
+  lexer.reset("`a${{c: d}}e`");
+
+  const types = Array.from(lexer).map((token) => token.type);
+
+  assertEquals(
+    types,
+    [
+      "strstart",
+      "const",
+      "interp",
+      "lbrace",
+      "ident",
+      "colon",
+      "space",
+      "ident",
+      "rbrace",
+      "rbrace",
+      "const",
+      "strend",
+    ],
+  );
+});
