@@ -1,262 +1,187 @@
 import {
-  isObject,
-  isArray,
-  isRegExp,
   isString,
+  isObject,
+  isRegExp,
+  isArray,
+  escapeRegExp,
+  combineArraySingleString,
   countLineBreaks,
   stringByteSize,
-  combineRegexp,
-  regExpFromString,
-  getValues,
   removeFlags,
 } from "./util.ts";
 
-type Token = {
-  type: string;
-  value: string;
-  text: string;
-  offset: number;
-  lineBreaks: number;
-  line: number;
-  col: number;
-};
-
-type LexerRule = {
-  match: string | RegExp;
-  value?: (s: string) => string;
-  lineBreaks?: boolean;
-  ignore?: boolean;
-  error?: boolean;
-};
-
-type CompiledLexerRule = LexerRule & {
-  match: RegExp;
-};
-
-type LexerSave = {
-  line: number;
-  col: number;
-};
-
-type Pattern = RegExp | string[] | string | LexerRule;
-
-export type LexerRulesObject = {
-  [name: string]: Pattern;
-};
-
-type CompiledLexerRulesObject = {
-  [name: string]: CompiledLexerRule;
-};
+import {
+  Token,
+  CompiledLexerRulesObject,
+  LexerRulesObject,
+  CompiledLexerRule,
+  Pattern,
+} from "./types/cute.d.ts";
 
 export default class Lexer {
-  private buffer = "";
-  private done = false;
-  private line = 1;
-  private col = 1;
-
   private rules: CompiledLexerRulesObject;
-  private errors: CompiledLexerRulesObject;
+  private ruleNames: string[];
   private regexp: RegExp;
-  private rulesGroupNames: string[];
-  private errorsRegexp: RegExp;
-  private errorsGroupNames: string[];
+  private tokenHistory: Token[] = [];
+  private buffer: string = "";
+
+  private nextValues = {
+    col: 1,
+    line: 1,
+    offset: 0,
+  };
 
   constructor(rules: LexerRulesObject) {
-    [this.rules, this.errors] = this.compileRules(rules);
+    const {
+      rules: compiledRules,
+      ruleNames,
+      regexp,
+    } = compileRules(rules);
 
-    this.rulesGroupNames = Object.keys(this.rules);
-    this.regexp = combineRegexp(
-      getValues(this.rules, "match"),
-      { sticky: true, groupAll: true },
+    this.rules = compiledRules;
+    this.ruleNames = ruleNames;
+    this.regexp = regexp;
+  }
+
+  private getRuleNameByExec(execArray: RegExpExecArray) {
+    const index = execArray.slice(1).findIndex((group) => !!group);
+
+    return this.ruleNames[index];
+  }
+
+  private getUnexpectedToken(lastIndex: number): string {
+    const nextMatchIndex = this.buffer.slice(lastIndex)
+      .search(removeFlags(this.regexp));
+
+    return this.buffer.slice(
+      lastIndex,
+      lastIndex + nextMatchIndex,
     );
-
-    this.errorsGroupNames = Object.keys(this.errors);
-    this.errorsRegexp = combineRegexp(
-      getValues(this.errors, "match"),
-      { groupAll: true },
-    );
   }
 
-  private getGroup(match: RegExpExecArray, options = { error: false }) {
-    const index = match.slice(1).findIndex((group) => !!group);
+  public reset(buffer: string): Lexer {
+    this.buffer = buffer;
 
-    const groupNames = !options.error
-      ? this.rulesGroupNames
-      : this.errorsGroupNames;
+    this.nextValues = {
+      line: 1,
+      col: 1,
+      offset: 0,
+    };
 
-    return groupNames[index];
+    this.regexp.lastIndex = 0;
+
+    return this;
   }
 
-  private compileRule(
-    rule: Pattern,
-  ): CompiledLexerRule {
-    if (isString(rule)) {
-      return {
-        match: regExpFromString(rule),
+  public next(): IteratorResult<Token> {
+    let isBufferCompletelyConsumed =
+      this.regexp.lastIndex === this.buffer.length;
+
+    while (!isBufferCompletelyConsumed) {
+      const { lastIndex: resultIndex } = this.regexp;
+
+      const execResult = this.regexp.exec(this.buffer);
+
+      const { line: lastLine, col: lastCol, offset: lastOffset } =
+        this.nextValues;
+
+      if (!execResult) {
+        throw new Error(
+          `Unexpected value at line ${lastLine} col ${lastCol}: ${
+            this.getUnexpectedToken(resultIndex)
+          }`,
+        );
+      }
+
+      const resultRuleName = this.getRuleNameByExec(execResult);
+      const resultRule = this.rules[resultRuleName];
+      const text = execResult[0];
+      const resultTransformFunction = resultRule.value;
+      const lineBreaks = countLineBreaks(text);
+
+      const token = {
+        type: resultRuleName,
+        value: resultTransformFunction ? resultTransformFunction(text) : text,
+        text: text,
+        offset: lastOffset,
+        lineBreaks,
+        col: lastCol,
+        line: lastLine,
       };
-    }
 
-    if (isRegExp(rule)) {
-      return {
-        match: rule,
+      this.nextValues = {
+        line: lastLine + lineBreaks,
+        col: lineBreaks > 0 ? 1 : lastCol + text.length,
+        offset: lastOffset + stringByteSize(text),
       };
-    }
 
-    if (isArray(rule)) {
-      return {
-        match: combineRegexp(rule),
-      };
-    }
-
-    if (isObject(rule)) {
-      return {
-        ...rule,
-        match: isRegExp(rule.match) ? rule.match : regExpFromString(rule.match),
-      };
-    }
-
-    throw new Error(`Unexpected pattern type: ${rule}`);
-  }
-
-  private compileRules(
-    rules: LexerRulesObject,
-  ): CompiledLexerRulesObject[] {
-    return Object
-      .entries(rules)
-      .reduce((arr: any[], [ruleName, pattern]) => {
-        const compiledRule = this.compileRule(pattern);
-        const ruleOrErrorIndex = !compiledRule.error ? 0 : 1;
-
-        arr[ruleOrErrorIndex] = {
-          ...arr[ruleOrErrorIndex],
-          [ruleName]: compiledRule,
+      if (!resultRule.ignore) {
+        return {
+          value: token,
+          done: false,
         };
+      }
 
-        return arr;
-      }, [{}, {}]);
+      this.tokenHistory.push(token);
+
+      isBufferCompletelyConsumed = this.regexp.lastIndex === this.buffer.length;
+    }
+
+    return { done: true, value: undefined };
   }
 
   public [Symbol.iterator]() {
     return { next: this.next.bind(this) };
   }
+}
 
-  public save(): LexerSave {
-    return {
-      line: this.line,
-      col: this.col,
-    };
+function compileRules(rules: LexerRulesObject) {
+  let compiledRules: CompiledLexerRulesObject = {};
+  let ruleNames: string[] = [];
+  let combinedRulesReString = "";
+
+  for (const [name, pattern] of Object.entries(rules)) {
+    const [patternString, compiledPattern] = compilePattern(pattern);
+
+    compiledRules[name] = compiledPattern;
+    ruleNames.push(name);
+    combinedRulesReString = `${combinedRulesReString &&
+      combinedRulesReString + "|"}(${patternString})`;
   }
 
-  public reset(buffer: string, save?: LexerSave): Lexer {
-    this.buffer = buffer;
+  return {
+    rules: compiledRules,
+    ruleNames,
+    regexp: new RegExp(combinedRulesReString, "y"),
+  };
+}
 
-    this.line = save ? save.line : 1;
-    this.col = save ? save.col : 1;
-    this.regexp.lastIndex = 0;
-    this.done = false;
+function compilePattern(pattern: Pattern): [string, CompiledLexerRule] {
+  let patternMatchString: string;
+  let compiledRule: Object = {};
 
-    return this;
+  if (isString(pattern)) {
+    patternMatchString = escapeRegExp(pattern);
+  } else if (isRegExp(pattern)) {
+    patternMatchString = pattern.source;
+  } else if (isArray(pattern)) {
+    patternMatchString = combineArraySingleString(pattern);
+  } else if (isObject(pattern)) {
+    const { value, lineBreaks, ignore } = pattern;
+    compiledRule = { value, lineBreaks, ignore };
+
+    patternMatchString = isRegExp(pattern.match)
+      ? pattern.match.source
+      : escapeRegExp(pattern.match);
+  } else {
+    throw new Error(`Unexpected pattern type: ${pattern}`);
   }
 
-  public toArray(): Token[] {
-    const save = this.save();
-    const { lastIndex } = this.regexp;
-
-    this.reset(this.buffer);
-
-    const array = [...this];
-
-    this.reset(this.buffer, save);
-    this.regexp.lastIndex = lastIndex;
-
-    return array;
-  }
-
-  private readNextToken(): Token | undefined {
-    let token: Token | undefined;
-
-    do {
-      const { lastIndex: resultIndex } = this.regexp;
-      const result = this.regexp.exec(this.buffer);
-
-      let valueRuleName, valueRule, value;
-
-      if (!result && resultIndex < this.buffer.length) {
-        const unexpectedToken = this.getUnexpectedToken(resultIndex);
-        const errorResult = this.errorsRegexp.exec(
-          unexpectedToken,
-        );
-
-        if (!errorResult) {
-          throw new Error(
-            `Unexpected token at line ${this.line} col ${this.col}: ${unexpectedToken}`,
-          );
-        }
-
-        valueRuleName = this.getGroup(errorResult, { error: true });
-        valueRule = this.errors[valueRuleName];
-        value = errorResult[0];
-
-        this.regexp.lastIndex = resultIndex + errorResult[0].length;
-      } else {
-        if (!result) return;
-
-        valueRuleName = this.getGroup(result);
-        valueRule = this.rules[valueRuleName];
-        value = result[0];
-      }
-
-      const valueTransform = valueRule.value;
-      const lineBreaks = countLineBreaks(value);
-
-      if (!valueRule.ignore) {
-        token = {
-          type: valueRuleName,
-          text: value,
-          value: valueTransform ? valueTransform(value) : value,
-          lineBreaks,
-          offset: stringByteSize(this.buffer.slice(0, resultIndex)),
-          col: this.col,
-          line: this.line,
-        };
-      }
-
-      if (valueRule.lineBreaks && lineBreaks > 0) {
-        this.col = 1;
-        this.line += lineBreaks;
-      } else {
-        this.col += value.length;
-      }
-
-      this.done = resultIndex === this.buffer.length;
-    } while (this.done || !token);
-
-    return token;
-  }
-
-  private getUnexpectedToken(lastIndex: number): string {
-    const tokenEndIndex = this.buffer.slice(lastIndex)
-      .search(removeFlags(this.regexp));
-
-    return this.buffer.slice(
-      lastIndex,
-      lastIndex + tokenEndIndex,
-    );
-  }
-
-  public next(): IteratorResult<Token> {
-    const token = this.readNextToken();
-
-    if (!token) {
-      return {
-        value: null,
-        done: true,
-      };
-    }
-
-    return {
-      value: token,
-      done: false,
-    };
-  }
+  return [
+    patternMatchString,
+    {
+      ...compiledRule,
+      match: new RegExp(patternMatchString),
+    },
+  ];
 }

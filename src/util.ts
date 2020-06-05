@@ -36,5 +36,17 @@ export const combineRegexp = (
   return new RegExp(combinedString, options?.sticky ? "y" : "");
 };
 
+export const combineArraySingleString = (
+  exps: (RegExp | string)[],
+  options?: { sticky?: boolean; groupAll?: boolean },
+): string =>
+  exps.reduce(
+    (acc: string, p: any) =>
+      `${acc && acc + "|"}${options?.groupAll ? "(" : ""}${
+        isRegExp(p) ? p.source : p
+      }${options?.groupAll ? ")" : ""}`,
+    "",
+  );
+
 export const removeFlags = (regExp: RegExp): RegExp =>
   new RegExp(regExp.source);

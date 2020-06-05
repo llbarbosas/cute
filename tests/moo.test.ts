@@ -89,6 +89,7 @@ Deno.test(`moo's "On Regular Expressions - Greedy quantifiers"`, () => {
   });
 
   greedyLexer.reset('"foo" "bar"');
+
   assertEquals(
     greedyLexer.next(),
     {
@@ -296,9 +297,7 @@ Deno.test(`moo's "Reset"`, () => {
     },
   );
 
-  const info = lexer.save();
-
-  lexer.reset("a different line\n", info);
+  lexer.reset("a different line\n");
 
   assertEquals(
     lexer.next(),
@@ -309,8 +308,8 @@ Deno.test(`moo's "Reset"`, () => {
         text: "a",
         offset: 0,
         lineBreaks: 0,
-        line: info.line,
-        col: info.col,
+        line: 1,
+        col: 1,
       },
       done: false,
     },
