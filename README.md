@@ -59,51 +59,6 @@ for(const token of lexer){
 lexer.toArray().map(token => token.type);
 ```
 
-### :package: API
-* **cute.compile** - Create a lexer
-```ts
-cute.compile({ 
-  ruleName: pattern // 'string', /^regexp$/ or even ['array', 'array'] 
-})
-```
-
-* **Lexer.reset** - Feeds the text buffer
-```ts
-const lexer = cute.compile({ /* rules */ })
-
-lexer.reset('text to tokenize')
-```
-
-* **Lexer.next** - Get next token
-```ts
-lexer.reset('text to tokenize')
-lexer.next() // { type: 'text', value: 'text' ...
-```
-
-* **Lexer.save** - Save lexer state
-```ts
-lexer.reset('a line')
-lexer.next()
-lexer.next() // { ... col: 3 }
-
-const save = lexer.save()
-
-lexer.reset('another line', save)
-lexer.next() // { ... col: 3 }
-```
-
-* **cute.error** - Returns errors as tokens (instead of throwing them)
-```ts
-cute.compile({ 
-  anotherError: { match: /\w+/, error: true },
-  customError: cute.error
-})
-
-// ...
-
-lexer.next() // { type: 'customError', value: 'incorrect' ...
-```
-
 ### :pushpin: Tips
 #### Don't forget to use non-greedy quantifiers 
 
@@ -150,6 +105,29 @@ lexer.reset('"test"')
 lexer.next() /* { value: 'test', text: '"test"' ... } */
 ```
 
+#### States
+Cute can handle states with different rules from each other
+```ts
+const lexer = cute.states({
+  main: {
+    strstart: {match: '`', push: 'lit'},
+    ident:    /\w+/,
+    lbrace:   {match: '{', push: 'main'},
+    rbrace:   {match: '}', pop: 1},
+    colon:    ':',
+    space:    {match: /\s+/, lineBreaks: true},
+  },
+  lit: {
+    interp:   {match: '${', push: 'main'},
+    escape:   /\\./,
+    strend:   {match: '`', pop: 1},
+    const:    {match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true},
+  },
+});
+
+lexer.reset("`a${{c: d}}e`"); // JS-style string interpolation
+Array.from(lexer).map((token) => token.type); // strstart const interp lbrace ident colon space ident rbrace rbrace const strend
+```
 ## :white_check_mark: Testing
 You can test it by running `deno test`
 

@@ -1,5 +1,5 @@
 import Lexer from "../lexer.ts";
-import StatefulLexer from "../StatefulLexer.ts";
+import StatefulLexer from "../stateful_lexer.ts";
 
 export type LexerRule = {
   match: string | RegExp;
