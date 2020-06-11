@@ -18,20 +18,13 @@ Tokenizer/lexer generator for Deno
   </a>
 </p>
 
-<p align="center">
-  <a href="#rocket-about">About</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#runner-usage">Usage</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#white_check_mark-testing">Testing</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#memo-licence">Licence</a>
-</p>
-
-## :rocket: About
+## About
 This is an reimplementation of [moo](https://github.com/no-context/moo) for Deno for study purpose. Like him, this is also a optimised tokenizer that compiles a single RegExp for performance (using ES6 sticky flag).
 
-## :runner: Usage
+## Usage
 
 ```ts
-import cute from 'gh:llbarbosas:cute/mod.ts'
+import cute from 'https://deno.land/x/cute/mod.ts'
 
 const lexer = cute.compile({
     animal: ["fox", "dog"],
@@ -56,10 +49,10 @@ for(const token of lexer){
 
 // or even
 
-lexer.toArray().map(token => token.type);
+Array.from(lexer).map(token => token.type);
 ```
 
-### :pushpin: Tips
+### Tips
 #### Don't forget to use non-greedy quantifiers 
 
 ```ts
@@ -110,27 +103,27 @@ Cute can handle states with different rules from each other
 ```ts
 const lexer = cute.states({
   main: {
-    strstart: {match: '`', push: 'lit'},
+    strstart: { match: '`', push: 'lit' },
     ident:    /\w+/,
-    lbrace:   {match: '{', push: 'main'},
-    rbrace:   {match: '}', pop: 1},
+    lbrace:   { match: '{', push: 'main' },
+    rbrace:   { match: '}', pop: 1 },
     colon:    ':',
-    space:    {match: /\s+/, lineBreaks: true},
+    space:    { match: /\s+/, lineBreaks: true },
   },
   lit: {
-    interp:   {match: '${', push: 'main'},
+    interp:   { match: '${', push: 'main' },
     escape:   /\\./,
-    strend:   {match: '`', pop: 1},
-    const:    {match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true},
+    strend:   { match: '`', pop: 1 },
+    const:    { match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true },
   },
 });
 
 lexer.reset("`a${{c: d}}e`"); // JS-style string interpolation
 Array.from(lexer).map((token) => token.type); // strstart const interp lbrace ident colon space ident rbrace rbrace const strend
 ```
-## :white_check_mark: Testing
+## Testing
 You can test it by running `deno test`
 
-## :memo: Licence
+## Licence
 
 MIT Licence. See the file [LICENSE](LICENSE) for more details.

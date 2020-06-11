@@ -44,7 +44,11 @@ export default class Lexer implements LexerInterface {
   }
 
   private getRuleNameByExec(execArray: RegExpExecArray) {
-    const index = execArray.slice(1).findIndex((group) => !!group);
+    const index = execArray.slice(1).findIndex((group) => group !== undefined);
+
+    if (index === -1) {
+      throw new Error("Unknown rule");
+    }
 
     return this.ruleNames[index];
   }
@@ -83,6 +87,33 @@ export default class Lexer implements LexerInterface {
 
   public getBufferIndex() {
     return this.regexp.lastIndex;
+  }
+
+  public lexOne(string: string): Token | undefined {
+    const regexpClone = new RegExp(this.regexp.source, "y");
+    const result = regexpClone.exec(string);
+
+    if (!result) {
+      return;
+    }
+
+    const resultRuleName = this.getRuleNameByExec(result);
+    const resultRule = this.rules[resultRuleName];
+    const text = result[0];
+    const resultTransformFunction = resultRule.value;
+    const lineBreaks = countLineBreaks(text);
+
+    const token: Token = {
+      type: resultRuleName,
+      value: resultTransformFunction ? resultTransformFunction(text) : text,
+      text: text,
+      offset: 0,
+      lineBreaks,
+      col: 1,
+      line: 1,
+    };
+
+    return token;
   }
 
   public next(): IteratorResult<Token> {

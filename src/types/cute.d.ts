@@ -38,7 +38,7 @@ export type Token = {
 
 export interface LexerInterface {
   next(): IteratorResult<Token>;
-  reset(buffer: string): Lexer | StatefulLexer;
+  reset(buffer: string): LexerInterface;
   [Symbol.iterator](): { next: () => IteratorResult<Token> };
 }
 
@@ -48,4 +48,11 @@ export type StatesObject = {
 
 export type LexersObject = {
   [stateLexer: string]: Lexer;
+};
+
+export type RecursiveRulesObject = {
+  [name: string]: {
+    match: string | string[];
+    value: (values: string[]) => string;
+  };
 };

@@ -43,7 +43,7 @@ export const combineArraySingleString = (
   exps.reduce(
     (acc: string, p: any) =>
       `${acc && acc + "|"}${options?.groupAll ? "(" : ""}${
-        isRegExp(p) ? p.source : p
+        isRegExp(p) ? p.source : escapeRegExp(p)
       }${options?.groupAll ? ")" : ""}`,
     "",
   );
