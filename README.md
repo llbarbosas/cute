@@ -7,6 +7,10 @@ Tokenizer/lexer generator for Deno
 </h3>
 
 <p align="center">
+  <a href="https://doc.deno.land/https/deno.land/x/cute/mod.ts">
+    <img alt="deno doc" src="https://img.shields.io/badge/deno-doc-black?style=flat-square">
+  </a>
+
   <a href="https://github.com/llbarbosas">
     <img alt="Made by Lucas Barbosa" src="https://img.shields.io/badge/made%20by-llbarbosas-000?style=flat-square">
   </a>
