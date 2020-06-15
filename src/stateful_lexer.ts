@@ -3,7 +3,7 @@ import {
   StatesObject,
   LexerInterface,
   Token,
-} from "./types/cute.d.ts";
+} from "./cute.d.ts";
 import Lexer from "./lexer.ts";
 
 export default class StatefulLexer implements LexerInterface {

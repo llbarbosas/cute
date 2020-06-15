@@ -1,9 +1,9 @@
-import Lexer from "../lexer.ts";
-import StatefulLexer from "../stateful_lexer.ts";
+import Lexer from "./lexer.ts";
+import StatefulLexer from "./stateful_lexer.ts";
 
 export type LexerRule = {
   match: string | RegExp;
-  value?: (s: string) => string;
+  value?: (s: string) => any;
   lineBreaks?: boolean;
   ignore?: boolean;
   error?: boolean;
@@ -28,7 +28,7 @@ export type CompiledLexerRulesObject = {
 
 export type Token = {
   type: string;
-  value: string;
+  value: any;
   text: string;
   offset: number;
   lineBreaks: number;
@@ -48,11 +48,4 @@ export type StatesObject = {
 
 export type LexersObject = {
   [stateLexer: string]: Lexer;
-};
-
-export type RecursiveRulesObject = {
-  [name: string]: {
-    match: string | string[];
-    value: (values: string[]) => string;
-  };
 };

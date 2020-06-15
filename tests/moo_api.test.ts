@@ -2,6 +2,10 @@ import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
 
 import cute from "../mod.ts";
 
+/* 
+ *  These tests aim to ensure compatibility with moo API
+ */
+
 // https://github.com/no-context/moo#usage
 Deno.test(`moo's "Usage"`, () => {
   const lexer = cute.compile({

@@ -17,7 +17,7 @@ import {
   CompiledLexerRule,
   Pattern,
   LexerInterface,
-} from "./types/cute.d.ts";
+} from "./cute.d.ts";
 
 export default class Lexer implements LexerInterface {
   private rules: CompiledLexerRulesObject;
@@ -175,6 +175,53 @@ export default class Lexer implements LexerInterface {
 
   public [Symbol.iterator]() {
     return { next: this.next.bind(this) };
+  }
+
+  public transform(
+    match: string,
+    transformFunction: (values: any[]) => any,
+  ) {
+    const matchArray = match.split(" ");
+    let buffer: Token[] = [];
+    let returnBuffer = "";
+    let currentMatchIndex = 0;
+
+    for (const token of this) {
+      if (token.type === matchArray[currentMatchIndex]) {
+        buffer.push(token);
+        currentMatchIndex++;
+      } else {
+        returnBuffer += buffer.reduce((acc, token) => acc + token.value, "");
+        returnBuffer += token.value;
+
+        buffer = [];
+        currentMatchIndex = 0;
+      }
+
+      if (buffer.length === matchArray.length) {
+        const bufferValues = buffer.map((token) => token.value);
+        const valueReturn = transformFunction(bufferValues).toString();
+        const valueToken = this.lexOne(valueReturn);
+
+        if (!valueToken) {
+          throw new Error("RecursiveRule.value must return tokenizable string");
+        }
+
+        if (valueToken.type === matchArray[0]) {
+          buffer = [valueToken];
+          currentMatchIndex = 1;
+        } else {
+          returnBuffer += valueToken.value;
+
+          buffer = [];
+          currentMatchIndex = 0;
+        }
+      }
+    }
+
+    returnBuffer += buffer.reduce((acc, token) => acc + token.value, "");
+
+    return this.reset(returnBuffer);
   }
 }
 
