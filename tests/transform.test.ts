@@ -2,7 +2,7 @@ import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
 
 import cute from "../mod.ts";
 
-Deno.test("lexer transform: expression", () => {
+Deno.test("lexer.transform: expression", () => {
   const lexer = cute.compile({
     number: { match: /\d+/, value: (s) => Number(s) },
     plus: "+",

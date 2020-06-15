@@ -186,16 +186,19 @@ export default class Lexer implements LexerInterface {
     let returnBuffer = "";
     let currentMatchIndex = 0;
 
+    function dumpBuffer(buf: Token[] = buffer) {
+      returnBuffer += buf.reduce((acc, token) => acc + token.value, "");
+
+      buffer = [];
+      currentMatchIndex = 0;
+    }
+
     for (const token of this) {
       if (token.type === matchArray[currentMatchIndex]) {
         buffer.push(token);
         currentMatchIndex++;
       } else {
-        returnBuffer += buffer.reduce((acc, token) => acc + token.value, "");
-        returnBuffer += token.value;
-
-        buffer = [];
-        currentMatchIndex = 0;
+        dumpBuffer([...buffer, token]);
       }
 
       if (buffer.length === matchArray.length) {
@@ -211,15 +214,12 @@ export default class Lexer implements LexerInterface {
           buffer = [valueToken];
           currentMatchIndex = 1;
         } else {
-          returnBuffer += valueToken.value;
-
-          buffer = [];
-          currentMatchIndex = 0;
+          dumpBuffer([valueToken]);
         }
       }
     }
 
-    returnBuffer += buffer.reduce((acc, token) => acc + token.value, "");
+    dumpBuffer();
 
     return this.reset(returnBuffer);
   }

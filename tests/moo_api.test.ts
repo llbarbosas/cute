@@ -3,11 +3,11 @@ import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
 import cute from "../mod.ts";
 
 /* 
- *  These tests aim to ensure compatibility with moo API
+ *  These tests aim to ensure compatibility with moo compatibility
  */
 
 // https://github.com/no-context/moo#usage
-Deno.test(`moo's "Usage"`, () => {
+Deno.test("moo compatibility: Usage", () => {
   const lexer = cute.compile({
     WS: /[ \t]+/,
     comment: /\/\/.*?$/,
@@ -87,7 +87,7 @@ Deno.test(`moo's "Usage"`, () => {
 });
 
 // https://github.com/no-context/moo#on-regular-expressions
-Deno.test(`moo's "On Regular Expressions - Greedy quantifiers"`, () => {
+Deno.test("moo compatibility: On Regular Expressions - Greedy quantifiers", () => {
   const greedyLexer = cute.compile({
     string: /".*"/,
   });
@@ -167,7 +167,7 @@ Deno.test(`moo's "On Regular Expressions - Greedy quantifiers"`, () => {
 });
 
 // https://github.com/no-context/moo#on-regular-expressions
-Deno.test(`moo's "On Regular Expressions - The order of your rules matters"`, () => {
+Deno.test("moo compatibility: On Regular Expressions - The order of your rules matters", () => {
   assertEquals(
     cute.compile({
       identifier: /[a-z0-9]+/,
@@ -208,7 +208,7 @@ Deno.test(`moo's "On Regular Expressions - The order of your rules matters"`, ()
 });
 
 // https://github.com/no-context/moo#line-numbers
-Deno.test(`moo's "Line numbers"`, () => {
+Deno.test("moo compatibility: Line numbers", () => {
   const lexer = cute.compile({
     newline: { match: "\n", lineBreaks: true },
   }).reset("\n\n\n");
@@ -247,7 +247,7 @@ Deno.test(`moo's "Line numbers"`, () => {
 });
 
 // https://github.com/no-context/moo#value-vs-text
-Deno.test(`moo's "Value vs Text"`, () => {
+Deno.test("moo compatibility: Value vs Text", () => {
   const lexer = cute.compile({
     ws: /[ \t]+/,
     string: {
@@ -276,7 +276,7 @@ Deno.test(`moo's "Value vs Text"`, () => {
 });
 
 // https://github.com/no-context/moo#reset
-Deno.test(`moo's "Reset"`, () => {
+Deno.test("moo compatibility: Reset", () => {
   const lexer = cute.compile({
     ws: /[ \t]+/,
     text: /\w+/,
@@ -321,7 +321,7 @@ Deno.test(`moo's "Reset"`, () => {
 });
 
 // https://github.com/no-context/moo#states
-Deno.test(`moo's "States"`, () => {
+Deno.test("moo compatibility: States", () => {
   const lexer = cute.states({
     main: {
       strstart: { match: "`", push: "lit" },
