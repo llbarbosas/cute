@@ -161,7 +161,7 @@ const lexer = cute.compile({
 })
 
 lexer.reset('"hello"`world`')
-lexer.next() // { value: 'test', text: '"test"' } 
+lexer.next() // { value: 'hello', text: '"hello"' } 
 lexer.next() // { value: '`world`', text: '`world`' }
 ```
 
