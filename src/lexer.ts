@@ -19,6 +19,10 @@ import {
   LexerInterface,
 } from "./cute.d.ts";
 
+type LexerOptions = {
+  ignore?: boolean;
+};
+
 export default class Lexer implements LexerInterface {
   private rules: CompiledLexerRulesObject;
   private ruleNames: string[];
@@ -30,8 +34,15 @@ export default class Lexer implements LexerInterface {
     line: 1,
     offset: 0,
   };
+  private options: LexerOptions = {
+    ignore: true,
+  };
 
-  constructor(rules: LexerRulesObject) {
+  constructor(rules: LexerRulesObject, options?: LexerOptions) {
+    if (options) {
+      this.options = options;
+    }
+
     const {
       rules: compiledRules,
       ruleNames,
@@ -160,7 +171,7 @@ export default class Lexer implements LexerInterface {
 
       this.history.push({ token, rule: resultRule });
 
-      if (!resultRule.ignore) {
+      if (!resultRule.ignore || !this.options.ignore) {
         return {
           value: token,
           done: false,
@@ -178,48 +189,56 @@ export default class Lexer implements LexerInterface {
   }
 
   public transform(
-    match: string,
+    matchStr: string,
     transformFunction: (values: any[]) => any,
   ) {
-    const matchArray = match.split(" ");
-    let buffer: Token[] = [];
-    let returnBuffer = "";
-    let currentMatchIndex = 0;
+    const lexerCopy = new Lexer(this.rules, { ignore: false });
+    lexerCopy.reset(this.buffer);
 
-    function dumpBuffer(buf: Token[] = buffer) {
-      returnBuffer += buf.reduce((acc, token) => acc + token.value, "");
+    const matchArray = matchStr.split(" ");
+    let tokenArray = Array.from(lexerCopy);
 
-      buffer = [];
-      currentMatchIndex = 0;
-    }
+    let matchIndex = 0;
+    let matchStart = 0;
 
-    for (const token of this) {
-      if (token.type === matchArray[currentMatchIndex]) {
-        buffer.push(token);
-        currentMatchIndex++;
+    for (let i = 0; i < tokenArray.length; i++) {
+      const currentToken = tokenArray[i];
+
+      if (currentToken.type === matchArray[matchIndex]) {
+        if (matchIndex === 0) {
+          matchStart = i;
+        }
+
+        matchIndex++;
       } else {
-        dumpBuffer([...buffer, token]);
+        matchIndex = 0;
       }
 
-      if (buffer.length === matchArray.length) {
-        const bufferValues = buffer.map((token) => token.value);
-        const valueReturn = transformFunction(bufferValues).toString();
-        const valueToken = this.lexOne(valueReturn);
+      if (matchIndex === matchArray.length) {
+        const matchTokens = tokenArray.slice(matchStart, i + 1);
+        const matchTokensValues = matchTokens.map((t) => t.value);
+        const transformedTokens = transformFunction(matchTokensValues)
+          .toString();
 
-        if (!valueToken) {
-          throw new Error("RecursiveRule.value must return tokenizable string");
-        }
+        const tokenizedTransform = Array.from(
+          lexerCopy.reset(transformedTokens),
+        );
 
-        if (valueToken.type === matchArray[0]) {
-          buffer = [valueToken];
-          currentMatchIndex = 1;
-        } else {
-          dumpBuffer([valueToken]);
-        }
+        tokenArray.splice(
+          matchStart,
+          i - matchStart + 1,
+          ...tokenizedTransform,
+        );
+
+        i = matchStart - 1;
+        matchIndex = 0;
       }
     }
 
-    dumpBuffer();
+    const returnBuffer = tokenArray.reduce(
+      (acc, token) => acc += token.value,
+      "",
+    );
 
     return this.reset(returnBuffer);
   }

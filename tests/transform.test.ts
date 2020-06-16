@@ -55,41 +55,42 @@ Deno.test("lexer.transform: expression", () => {
   */
 });
 
-Deno.test("lexer.transform: markdown", () => {
-  const lexer = cute.compile({
-    asterisk: "*",
-    underscore: "_",
-    minus: "-",
-    plus: "+",
-    listItem: /\n\d+\./,
-    equals: "=",
-    tildes: "~",
-    hash: "#",
-    html: /<\s*\w+[^>]*>.*?<\s*\/\s*\w+>/,
-    newline: "\n",
-    ws: / +/,
-    text: /[\d\w?! ]+/,
+Deno.test("lexer.transform: EBNF", () => {
+  const transformMatchLexer = cute.compile({
+    multiply: {
+      match: /\d+ ?\*/,
+      value: (s) => Number(s.replace("*", "")),
+    },
+    type: /\w+/,
+    ws: { match: / +/, ignore: true },
   });
 
-  lexer.reset("# Hi everyone\nhow r you guys?# s -+");
+  transformMatchLexer.reset("3*A B");
 
-  lexer.transform(
-    "hash ws text newline",
-    ([, , text]) => `<h1>${text}</h1>`,
-  );
-  lexer.transform(
-    "asterisk text asterisk",
-    ([, text]: string[]) => `<i>${text}</i>`,
-  );
-  lexer.transform(
-    "asterisk asterisk text asterisk asterisk",
-    ([, , text]) => `<b>${text}</b>`,
-  );
-  lexer.transform(
-    "hash ws text newline",
-    ([, , text]) => `<h1>${text}</h1>`,
+  transformMatchLexer.transform(
+    "multiply type",
+    ([times, type]) => {
+      return repeatWithSeparator(type, times);
+    },
   );
 
-  // console.log(...lexer);
-  // assertEquals();
+  assertEquals(
+    Array.from(transformMatchLexer).map((t) => t.value),
+    ["A", "A", "A", "B"],
+  );
 });
+
+function repeatWithSeparator(
+  string: string,
+  times: number,
+  separator: string = " ",
+): string {
+  if (times < 0) {
+    return "";
+  }
+  if (times === 1) {
+    return string;
+  } else {
+    return string + separator + repeatWithSeparator(string, times - 1);
+  }
+}

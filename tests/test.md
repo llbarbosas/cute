@@ -1,34 +1,8 @@
-## GitHub Markdown fixture
-
-
-### My fixtures
-
-#### Left-aligned image
-
-<img src="image.png" width="182" align="left">
-
-#### Right-aligned image
-
-<img src="image.png" width="182" align="right">
-
-
-### Code snippet
-
-https://github.com/sindresorhus/generate-github-markdown-css/blob/6d6a328dc9706d4e6f1bcc524ed1ad1b0448a3ea/index.js#L25-L28
-
----
-
----
-
-Borrowed from https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
-
----
+# Markdown Cheatsheet
 
 This is intended as a quick reference and showcase. For more complete info, see [John Gruber's original spec](http://daringfireball.net/projects/markdown/) and the [Github-flavored Markdown info page](http://github.github.com/github-flavored-markdown/).
 
 Note that there is also a [Cheatsheet specific to Markdown Here](./Markdown-Here-Cheatsheet) if that's what you're looking for.
-
-PLEASE DO NOT EDIT THIS PAGE! You can play around with Markdown on our [live demo page](http://www.markdown-here.com/livedemo.html).
 
 ##### Table of Contents
 [Headers](#headers)
