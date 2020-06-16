@@ -9,15 +9,13 @@ Deno.test("lexer.transform: expression", () => {
     times: "*",
   });
 
-  lexer.reset("1+2*3*4");
+  lexer.reset("1+2*3*4+5");
 
-  // "1+2*3*4" -> "1+24"
   lexer.transform(
     "number times number",
     ([n1, op, n2]) => n1 * n2,
   );
 
-  // "1+24" -> "25"
   lexer.transform(
     "number plus number",
     ([n1, op, n2]) => n1 + n2,
@@ -26,7 +24,7 @@ Deno.test("lexer.transform: expression", () => {
   assertEquals(
     Array.from(lexer)
       .map((token) => token.value),
-    [25],
+    [1 + 2 * 3 * 4 + 5],
   );
 
   /* 
@@ -58,10 +56,10 @@ Deno.test("lexer.transform: expression", () => {
 Deno.test("lexer.transform: EBNF", () => {
   const transformMatchLexer = cute.compile({
     multiply: {
-      match: /\d+ ?\*/,
+      match: /\d+\*/,
       value: (s) => Number(s.replace("*", "")),
     },
-    type: /\w+/,
+    type: /[a-zA-Z]+/,
     ws: { match: / +/, ignore: true },
   });
 
@@ -73,6 +71,8 @@ Deno.test("lexer.transform: EBNF", () => {
       return repeatWithSeparator(type, times);
     },
   );
+
+  //console.log(...transformMatchLexer);
 
   assertEquals(
     Array.from(transformMatchLexer).map((t) => t.value),

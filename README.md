@@ -23,38 +23,95 @@ Tokenizer/lexer generator for Deno
 </p>
 
 ## About
-This is an reimplementation of [moo](https://github.com/no-context/moo) for Deno for study purpose. Like him, this is also a optimised tokenizer that compiles a single RegExp for performance (using ES6 sticky flag).
+Cute is a fast tokenizer/lexer for JavaScript. This aims to help you recognize and classify patterns in texts, and also provides tools to parse the results.
+
+This is heavily inspired by moo, and besides having a compatible API, this also applies the ES6 sticky flag on a single compiled RegExp for optimized performance.
 
 ## Usage
+Using cute.compile, you can create your lexer. 
 
 ```ts
 import cute from 'https://deno.land/x/cute/mod.ts'
 
 const lexer = cute.compile({
-    animal: ["fox", "dog"],
-    det: "the",
-    adp: "over",
-    adj: { match: /quick|brown|lazy/, value: (s) => `it's ${s}` },
-    verb: /jumps/,
-    space: { match: / +/, ignore: true },
-    newline: { match: "\n", lineBreaks: true, ignore: true },
+  plus: "+",
+  times: "*",
+  number: {
+    match: /\d+/, 
+    value: (s) => Number(s)
+  },
+  whitespace: { match: / +/, ignore: true }
 });
+```
 
-lexer.reset("the quick brown fox\njumps over the lazy dog");
+For feeding him, use `lexer.reset("text to tokenize")`.
 
-lexer.next(); // { type: "det", value: "the", text: "the", offset: 0, lineBreaks: 0, line: 1, col: 1 }
-lexer.next(); // { type: "adj", value: "it's quick", text: "quick", offset: 3, lineBreaks: 0, line: 1, col: 5 }
+```ts
+lexer.reset("1+2*3*4+5");
+``` 
 
-// or you can iterate 
+Lexers are also iterators, so you can get your tokens in different ways:
 
+```ts
+const nextToken = lexer.next();
+
+// or 
 for(const token of lexer){
-    console.log(token);
+  console.log(token);
 }
 
-// or even
-
+// or 
 Array.from(lexer).map(token => token.type);
+``` 
+
+To help you parsing the results, you can add some rules to transform your text.
+
+```ts
+// 1+2*3*4+5 -> 1+24+5
+lexer.transform(
+  "number times number",
+  ([n1, op, n2]) => n1 * n2,
+);
+
+// 1+24+5 -> 30
+lexer.transform(
+  "number plus number",
+  ([n1, op, n2]) => n1 + n2,
+);
+
+const values = Array.from(lexer).map((token) => token.value);
+
+console.log(values[0]); // 30
+``` 
+
+You can use a lexer with different rules sets (or states) in more complex scenarios. Cute calls this `StatefulLexer`
+```ts
+// JS-style string interpolation
+const lexer = cute.states({
+  main: {
+    strstart: { match: '`', push: 'lit' },
+    ident:    /\w+/,
+    lbrace:   { match: '{', push: 'main' },
+    rbrace:   { match: '}', pop: 1 },
+    colon:    ':',
+    space:    { match: /\s+/, lineBreaks: true },
+  },
+  lit: {
+    interp:   { match: '${', push: 'main' },
+    escape:   /\\./,
+    strend:   { match: '`', pop: 1 },
+    const:    { match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true },
+  },
+});
+
+lexer.reset("`a${{c: d}}e`");
+
+const types = Array.from(lexer).map((token) => token.type); 
+
+console.log(types); // strstart const interp lbrace ident colon space ident rbrace rbrace const strend
 ```
+
+You can see the full documentation on [doc.deno.land](https://doc.deno.land/https/deno.land/x/cute/mod.ts)
 
 ### Tips
 #### Don't forget to use non-greedy quantifiers 
@@ -91,40 +148,23 @@ cute.compile({
 ```
 
 #### Value vs. Text
-The value is the same as the text, unless you provide a value transform.
 ```ts
 const lexer = cute.compile({
   ws: /[ \t]+/,
-  string: {match: /"(?:\\["\\]|[^\n"\\])*"/, value: s => s.slice(1, -1)},
+  string: { 
+    match: /"(?:\\["\\]|[^\n"\\])*"/, 
+    value: s => s.slice(1, -1) // function to transform token.value 
+  },
+  literals: {
+    match: /`(?:\\["\\]|[^\n"\\])*`/ 
+  }
 })
 
-lexer.reset('"test"')
-lexer.next() /* { value: 'test', text: '"test"' ... } */
+lexer.reset('"hello"`world`')
+lexer.next() // { value: 'test', text: '"test"' } 
+lexer.next() // { value: '`world`', text: '`world`' }
 ```
 
-#### States
-Cute can handle states with different rules from each other
-```ts
-const lexer = cute.states({
-  main: {
-    strstart: { match: '`', push: 'lit' },
-    ident:    /\w+/,
-    lbrace:   { match: '{', push: 'main' },
-    rbrace:   { match: '}', pop: 1 },
-    colon:    ':',
-    space:    { match: /\s+/, lineBreaks: true },
-  },
-  lit: {
-    interp:   { match: '${', push: 'main' },
-    escape:   /\\./,
-    strend:   { match: '`', pop: 1 },
-    const:    { match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true },
-  },
-});
-
-lexer.reset("`a${{c: d}}e`"); // JS-style string interpolation
-Array.from(lexer).map((token) => token.type); // strstart const interp lbrace ident colon space ident rbrace rbrace const strend
-```
 ## Testing
 You can test it by running `deno test`
 
