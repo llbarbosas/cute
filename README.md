@@ -44,7 +44,7 @@ const lexer = cute.compile({
 });
 ```
 
-For feeding him, use `lexer.reset("text to tokenize")`.
+To feed him, use `lexer.reset("text to tokenize")`.
 
 ```ts
 lexer.reset("1+2*3*4+5");
