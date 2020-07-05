@@ -23,90 +23,73 @@ Tokenizer/lexer generator for Deno
 </p>
 
 ## About
-Cute is a fast tokenizer/lexer for JavaScript. This aims to help you recognize and classify patterns in texts, and also provides tools to parse the results.
 
-This is heavily inspired by moo, and besides having a compatible API, this also applies the ES6 sticky flag on a single compiled RegExp for optimized performance.
+Cute is a fast tokenizer/lexer for TypeScript. This aims to help you recognize and classify patterns in texts, and also provides tools to parse the results.
+
+This is heavily inspired by moo, and also applies the ES6 sticky flag on a single compiled RegExp for optimized performance.
 
 ## Usage
-Using cute.compile, you can create your lexer. 
+
+Using cute.compile, you can create your lexer.
 
 ```ts
-import cute from 'https://deno.land/x/cute/mod.ts'
+import cute from "https://deno.land/x/cute/mod.ts";
 
-const lexer = cute.compile({
+const tokenizer = cute.compile({
   plus: "+",
   times: "*",
   number: {
-    match: /\d+/, 
-    value: (s) => Number(s)
+    match: /\d+/,
+    value: (s) => Number(s),
   },
-  whitespace: { match: / +/, ignore: true }
+  whitespace: { match: / +/, ignore: true },
 });
 ```
 
-To feed him, use `lexer.reset("text to tokenize")`.
+Tokenizers are simple functions that return iterators:
 
 ```ts
-lexer.reset("1+2*3*4+5");
-``` 
+const results = tokenizer("1+2*3*4+5");
+```
 
-Lexers are also iterators, so you can get your tokens in different ways:
+Like any iterable, you can get your tokens in different ways:
 
 ```ts
-const nextToken = lexer.next();
+const nextToken = results.next();
 
-// or 
-for(const token of lexer){
+// or
+for (const token of results) {
   console.log(token);
 }
 
-// or 
-Array.from(lexer).map(token => token.type);
-``` 
+// or
+Array.from(results).map((token) => token.type); // [...results]
+```
 
-To help you parsing the results, you can add some rules to transform your text.
+You can use a tokenizer with different rules sets (or states) in more complex scenarios.
 
-```ts
-// 1+2*3*4+5 -> 1+24+5
-lexer.transform(
-  "number times number",
-  ([n1, op, n2]) => n1 * n2,
-);
-
-// 1+24+5 -> 30
-lexer.transform(
-  "number plus number",
-  ([n1, op, n2]) => n1 + n2,
-);
-
-const values = Array.from(lexer).map((token) => token.value);
-
-console.log(values[0]); // 30
-``` 
-
-You can use a lexer with different rules sets (or states) in more complex scenarios. Cute calls this `StatefulLexer`
 ```ts
 // JS-style string interpolation
-const lexer = cute.states({
+const tokenizer = cute.states({
   main: {
-    strstart: { match: '`', push: 'lit' },
-    ident:    /\w+/,
-    lbrace:   { match: '{', push: 'main' },
-    rbrace:   { match: '}', pop: 1 },
-    colon:    ':',
-    space:    { match: /\s+/, lineBreaks: true },
+    strstart: { match: "`", push: "lit" },
+    ident: /\w+/,
+    lbrace: { match: "{", push: "main" },
+    rbrace: { match: "}", pop: 1 },
+    colon: ":",
+    space: { match: /\s+/ },
   },
   lit: {
-    interp:   { match: '${', push: 'main' },
-    escape:   /\\./,
-    strend:   { match: '`', pop: 1 },
-    const:    { match: /(?:[^$`]|\$(?!\{))+/, lineBreaks: true },
+    interp: { match: "${", push: "main" },
+    escape: /\\./,
+    strend: { match: "`", pop: 1 },
+    const: { match: /(?:[^$`]|\$(?!\{))+/ },
   },
 });
 
-lexer.reset("`a${{c: d}}e`");
+const results = tokenizer("`a${{c: d}}e`");
 
-const types = Array.from(lexer).map((token) => token.type); 
+const types = Array.from(results).map((token) => token.type);
 
 console.log(types); // strstart const interp lbrace ident colon space ident rbrace rbrace const strend
 ```
@@ -114,58 +97,53 @@ console.log(types); // strstart const interp lbrace ident colon space ident rbra
 You can see the full documentation on [doc.deno.land](https://doc.deno.land/https/deno.land/x/cute/mod.ts)
 
 ### Tips
-#### Don't forget to use non-greedy quantifiers 
+
+#### Don't forget to use non-greedy quantifiers
 
 ```ts
 // DON'T
-const lexer = cute.compile({
-  string: /".*"/,   // greedy quantifier *
+const tokenizer = cute.compile({
+  string: /".*"/, // greedy quantifier *
   // ...
-})
+});
 
-lexer.reset('"foo" "bar"')
-lexer.next() // -> { type: 'string', value: '"foo" "bar"' }
+const results = tokenizer('"foo" "bar"');
+results.next(); // -> { type: 'string', value: '"foo" "bar"' }
 
 // DO
 
-let lexer = cute.compile({
-  string: /".*?"/,   // non-greedy quantifier *?
+const tokenizer = cute.compile({
+  string: /".*?"/, // non-greedy quantifier *?
   // ...
-})
+});
 
-lexer.reset('"foo" "bar"')
-lexer.next() // -> { type: 'string', value: 'foo' }
-lexer.next() // -> { type: 'space', value: ' ' }
-lexer.next() // -> { type: 'string', value: 'bar' }
-```
-
-#### Tracking new lines
-
-```ts
-cute.compile({
-  newline: { match: '\n', lineBreaks: true }, // default is lineBreaks = false
-})
+const results = tokenizer('"foo" "bar"');
+results.next(); // -> { type: 'string', value: 'foo' }
+results.next(); // -> { type: 'space', value: ' ' }
+results.next(); // -> { type: 'string', value: 'bar' }
 ```
 
 #### Value vs. Text
+
 ```ts
-const lexer = cute.compile({
+const tokenizer = cute.compile({
   ws: /[ \t]+/,
-  string: { 
-    match: /"(?:\\["\\]|[^\n"\\])*"/, 
-    value: s => s.slice(1, -1) // function to transform token.value 
+  string: {
+    match: /"(?:\\["\\]|[^\n"\\])*"/,
+    value: (s) => s.slice(1, -1), // function to transform token.value
   },
   literals: {
-    match: /`(?:\\["\\]|[^\n"\\])*`/ 
-  }
-})
+    match: /`(?:\\["\\]|[^\n"\\])*`/,
+  },
+});
 
-lexer.reset('"hello"`world`')
-lexer.next() // { value: 'hello', text: '"hello"' } 
-lexer.next() // { value: '`world`', text: '`world`' }
+const results = tokenizer('"hello"`world`');
+results.next(); // { value: 'hello', text: '"hello"' }
+results.next(); // { value: '`world`', text: '`world`' }
 ```
 
 ## Testing
+
 You can test it by running `deno test`
 
 ## Licence

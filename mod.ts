@@ -1,15 +1,4 @@
-import {
-  LexerRulesObject,
-  StatesObject,
-} from "./src/cute.d.ts";
-import Lexer from "./src/lexer.ts";
-import StatefulLexer from "./src/stateful_lexer.ts";
+import compile from "./src/compile.ts";
+import states from "./src/states.ts";
 
-export default {
-  compile(rules: LexerRulesObject) {
-    return new Lexer(rules);
-  },
-  states(states: StatesObject) {
-    return new StatefulLexer(states);
-  },
-};
+export default { compile, states };
