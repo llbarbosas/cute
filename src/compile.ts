@@ -5,14 +5,17 @@ import {
   escapeRegExpString,
 } from "./util.ts";
 
+// TODO: Add types
 export default function compile(rules: any) {
   const {
     regexp,
     rawRules,
     typeNames,
     valueTransformFns,
-    ignore, // TODO: implement token ignore
+    ignore,
   } = compileRules(rules);
+
+  const mustIgnoreToken = mustIgnore(ignore);
 
   return (buffer: string) => {
     let lastToken: any;
@@ -20,17 +23,21 @@ export default function compile(rules: any) {
     const next = (index?: number) => {
       if (index) regexp.lastIndex = index;
 
-      const token = getNextToken(buffer, regexp);
+      let value = null, token = null;
 
-      const value = !!token
-        ? pipe(
+      do {
+        token = getNextToken(buffer, regexp);
+
+        value = !!token
+          ? pipe(
             withValueTransform(rawRules, valueTransformFns),
             withTypeName(typeNames),
-            withColLine(lastToken)
+            withColLine(lastToken),
           )(token)
-        : null;
+          : null;
 
-      lastToken = value;
+        lastToken = value;
+      } while (mustIgnoreToken(token));
 
       return { value, done: value === null };
     };
@@ -45,7 +52,7 @@ export default function compile(rules: any) {
 function highlightUnexpectedToken(
   buffer: string,
   regexp: RegExp,
-  lastIndex: number
+  lastIndex: number,
 ) {
   const regexpClone = new RegExp(regexp.source, "g");
   regexpClone.lastIndex = lastIndex;
@@ -92,6 +99,10 @@ function withTypeName(typeNames: string[]) {
   };
 }
 
+function mustIgnore(ignore: boolean[]) {
+  return (token: any) => !!token ? ignore[token.type] : false;
+}
+
 function withValueTransform(rawRules: RegExp[], valueTransformFns: any[]) {
   return (token: any) => {
     const result = rawRules[token.type].exec(token.text);
@@ -111,9 +122,7 @@ export function withColLine(lastToken: any) {
   return (token: any) => {
     const line = lastToken ? lastToken.line + countNewLines(lastToken.text) : 1;
     const col = lastToken
-      ? lastToken.line !== line
-        ? 1
-        : lastToken.col + lastToken.text.length
+      ? lastToken.line !== line ? 1 : lastToken.col + lastToken.text.length
       : 1;
 
     return { ...token, line, col };
@@ -123,10 +132,11 @@ export function withColLine(lastToken: any) {
 function getRuleSource(rule: string | RegExp | any) {
   if (rule instanceof RegExp) return ignoreRegexpGroups(rule.source);
   if (typeof rule === "string") return escapeRegExpString(rule);
-  if (rule.match)
+  if (rule.match) {
     return rule.match instanceof RegExp
       ? ignoreRegexpGroups(rule.match.source)
       : escapeRegExpString(rule.match);
+  }
 
   throw new Error();
 }
@@ -135,16 +145,19 @@ function compileRules(rules: any) {
   const { regexpSource, ...compiledData } = Object.entries(rules).reduce(
     (acc: any, [ruleName, rule]: [string, any]) => {
       const ruleSource = getRuleSource(rule);
-      const rawRule = rule instanceof RegExp ? rule : new RegExp(ruleSource);
+      const rawRule = rule instanceof RegExp
+        ? rule
+        : rule.match instanceof RegExp
+        ? new RegExp(rule.match)
+        : new RegExp(ruleSource);
       let valueTransformFn,
         ignore = false;
 
       if (rule.value) valueTransformFn = rule.value;
       if (rule.ignore) ignore = rule.ignore;
 
-      const regexpSource = `${
-        acc.regexpSource && acc.regexpSource + "|"
-      }(${ruleSource})`;
+      const regexpSource = `${acc.regexpSource &&
+        acc.regexpSource + "|"}(${ruleSource})`;
 
       return {
         regexpSource,
@@ -160,7 +173,7 @@ function compileRules(rules: any) {
       typeNames: [],
       valueTransformFns: [],
       ignore: [],
-    }
+    },
   );
 
   return {

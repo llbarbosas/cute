@@ -2,11 +2,15 @@ import cute from "../mod.ts";
 
 const lexer = cute.compile({
   text: /(a+)[a-z]+/,
-  threeNumber: /(\d)(\d)(\d)/,
+  threeNumber: {
+    match: /(\d)(\d)(\d)/,
+    value: (groups: string[]) =>
+      Number(groups[1]) + Number(groups[2]) + Number(groups[3]),
+  },
   number: /\d/,
   newline: { match: /\n/, value: () => "i'm new line" },
-  lparen: "(",
-  rparen: ")",
+  lparen: { match: "(", ignore: true },
+  rparen: { match: ")", ignore: true },
 });
 
 const results = lexer("(abcd\n234\n\nabcd)");
@@ -17,6 +21,7 @@ try {
   console.log(error);
 }
 
+/*
 const lexerMd = cute.compile({
   header: /\n(#+)(.*)/,
   links: /\[([^\[]+)\]\(([^\)]+)\)/,
@@ -61,3 +66,4 @@ More text...
 `);
 
 for (const value of results3) console.log(value);
+*/
